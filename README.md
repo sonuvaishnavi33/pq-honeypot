@@ -11,24 +11,27 @@ A Java honeypot and evidence collector with a local dashboard. It scores decoy r
 
 ## Requirements
 
-- Docker Desktop or Docker Engine with Docker Compose v2
-- Git, to clone the repository
-- Python 3.8+ only if you want to regenerate the project figures
+| Use | Requirements |
+|---|---|
+| Run the app with Docker (recommended) | Docker Desktop/Engine with Compose v2; Internet for the first build; local ports 8080 and 9090 available |
+| Build or test Java on your computer | JDK 25 (tested with Eclipse Temurin 25.0.5) and Maven 3.9.x (tested with 3.9.6) |
+| Run the app directly on your computer | The Java requirements above plus MySQL 8.4, or use the Compose database services |
+| Regenerate project figures | Python 3.8+ and pip; install the Python package from `requirements.txt` |
 
-Java and Maven do not need to be installed for the Docker quick start.
+The Docker quick start does not require Java, Maven, Python, or a separately installed MySQL server. The Compose stack builds with Java 25/Maven 3.9.x, runs MySQL 8.4, and executes `mvn verify` during the image build.
+
+Java libraries are managed by Maven in [pom.xml](pom.xml): Spring Boot 3.5.16 Web and JDBC starters, MySQL Connector/J at runtime, and Spring Boot Test for tests. The `requirements.txt` file is Python-only; it is not the Java dependency list.
 
 ## Get started
 
 ### 1. Clone the repository
 
-On GitHub, select **Code → HTTPS → Copy URL**, then run:
+Clone the repository and enter its folder:
 
 ```shell
-git clone <repository-url>
-cd <repository-folder>
+git clone https://github.com/sonuvaishnavi33/pq-honeypot.git
+cd pq-honeypot
 ```
-
-Replace the placeholders with the URL and folder name for this repository.
 
 ### 2. Install the optional Python dependency
 
@@ -80,9 +83,11 @@ docker compose -f compose.quickstart.yml logs -f honeypot collector
 
 ## Development
 
-To run tests on your machine, install JDK 25 and Maven, then run:
+To run tests on your machine, install JDK 25 and Maven 3.9.x. Check the installed versions and run the unit tests with:
 
 ```shell
+java -version
+mvn -version
 mvn test
 ```
 
