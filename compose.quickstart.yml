@@ -1,0 +1,85 @@
+name: pq-honeypot-quickstart
+
+services:
+  honeypot-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS:-change-me}
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: honeypot_db
+    volumes:
+      - honeypot-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  collector-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASS:-change-me}
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: collector_db
+    volumes:
+      - collector-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  collector:
+    image: pq-honeypot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: collector
+      PORT: "9090"
+      DB_URL: jdbc:mysql://collector-db:3306/collector_db
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-change-me}
+      APP_PSK: ${APP_PSK:-change-me-long-random-string}
+      PQH_INTEGRITY_MODE: ${PQH_INTEGRITY_MODE:-CHAIN}
+      PQH_KEM_MODE: ${PQH_KEM_MODE:-ML_KEM_768}
+      DEMO_MODE: ${DEMO_MODE:-true}
+    depends_on:
+      collector-db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${COLLECTOR_HOST_PORT:-9090}:9090"
+    restart: unless-stopped
+
+  honeypot:
+    image: pq-honeypot:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: honeypot
+      PORT: "8080"
+      DB_URL: jdbc:mysql://honeypot-db:3306/honeypot_db
+      DB_USER: ${DB_USER:-root}
+      DB_PASS: ${DB_PASS:-change-me}
+      APP_PSK: ${APP_PSK:-change-me-long-random-string}
+      COLLECTOR_URL: http://collector:9090
+      PQH_INTEGRITY_MODE: ${PQH_INTEGRITY_MODE:-CHAIN}
+      PQH_KEM_MODE: ${PQH_KEM_MODE:-ML_KEM_768}
+      DEMO_MODE: ${DEMO_MODE:-true}
+    depends_on:
+      honeypot-db:
+        condition: service_healthy
+      collector:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${HONEYPOT_HOST_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  honeypot-db-data:
+  collector-db-data:

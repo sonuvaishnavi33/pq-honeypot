@@ -1,0 +1,11 @@
+id,label,query
+attack-1,attack,probe=union%20select%20local_test
+attack-2,attack,probe=%3Cscript%3E
+attack-3,attack,probe=..%2Fetc%2Fpasswd
+attack-4,attack,probe=%3B%20cat%20%2Fetc%2Fpasswd
+attack-5,attack,probe=%27%20OR%20%271%27%3D%271
+benign-1,benign,city=summer%20weather
+benign-2,benign,q=select%20something
+benign-3,benign,redirect=%2Fhome%2Fprofile
+benign-4,benign,value=100%25
+benign-5,benign,message=one%20two

@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="Local post-quantum honeypot security operations dashboard">
+  <title>PQ Sentinel · Security overview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1220;
+      --sidebar: #0d1626;
+      --surface: #111d2e;
+      --surface-raised: #152338;
+      --border: #25364e;
+      --text: #e8eef7;
+      --muted: #91a2ba;
+      --faint: #647791;
+      --accent: #70a5ff;
+      --accent-strong: #4385f5;
+      --accent-soft: rgba(67, 133, 245, .14);
+      --green: #37c991;
+      --green-soft: rgba(55, 201, 145, .13);
+      --amber: #f3b84b;
+      --amber-soft: rgba(243, 184, 75, .13);
+      --red: #ff6b73;
+      --red-soft: rgba(255, 107, 115, .13);
+      --shadow: 0 16px 42px rgba(0, 0, 0, .18);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background:
+        radial-gradient(900px 460px at 75% -130px, rgba(67, 133, 245, .11), transparent 68%),
+        var(--bg);
+      color: var(--text);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button { font: inherit; }
+    a { color: inherit; text-decoration: none; }
+    .app-shell { min-height: 100vh; }
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 5;
+      display: flex;
+      width: 244px;
+      flex-direction: column;
+      padding: 24px 16px 18px;
+      border-right: 1px solid var(--border);
+      background: var(--sidebar);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 9px 26px; }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid rgba(112, 165, 255, .36);
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(67, 133, 245, .26), rgba(55, 201, 145, .1));
+      color: var(--accent);
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.08em;
+    }
+    .brand-name { display: block; font-size: 14px; font-weight: 750; letter-spacing: .01em; }
+    .brand-caption { display: block; margin-top: 1px; color: var(--muted); font-size: 10px; letter-spacing: .14em; }
+    .nav-label { padding: 0 11px 9px; color: var(--faint); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    .nav-list { display: grid; gap: 5px; }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 42px;
+      padding: 0 11px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      transition: background .16s ease, color .16s ease, border-color .16s ease;
+    }
+    .nav-link:hover, .nav-link.active { border-color: var(--border); background: var(--accent-soft); color: var(--text); }
+    .nav-icon { display: grid; width: 18px; place-items: center; color: var(--accent); font-size: 15px; }
+    .sidebar-foot { margin-top: auto; }
+    .service-card { padding: 13px; border: 1px solid var(--border); border-radius: 11px; background: var(--surface); }
+    .service-title { display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 650; }
+    .service-state { display: flex; align-items: center; gap: 7px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+    .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 4px var(--green-soft); }
+    .pulse-dot.offline { background: var(--red); box-shadow: 0 0 0 4px var(--red-soft); }
+    .sidebar-note { padding: 11px 8px 0; color: var(--faint); font-size: 10px; line-height: 1.45; }
+
+    .main { max-width: 1640px; margin-left: 244px; padding: 0 34px 40px; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      display: flex;
+      min-height: 80px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(16px);
+    }
+    .breadcrumb { color: var(--faint); font-size: 11px; }
+    .breadcrumb strong { color: var(--muted); font-weight: 550; }
+    .top-actions { display: flex; align-items: center; gap: 11px; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 29px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .status-pill .pulse-dot { width: 6px; height: 6px; }
+    .status-pill.offline .pulse-dot { background: var(--red); box-shadow: 0 0 0 4px var(--red-soft); }
+    .icon-button {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .icon-button:hover { border-color: var(--accent); color: var(--text); }
+
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 27px 0 20px; }
+    .eyebrow { margin: 0 0 7px; color: var(--accent); font-size: 10px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(25px, 3vw, 32px); font-weight: 720; letter-spacing: -.045em; }
+    .page-subtitle { max-width: 700px; margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .updated { color: var(--faint); font-size: 11px; white-space: nowrap; }
+    .heading-tools { display: flex; align-items: center; gap: 13px; }
+    .export-button { min-height: 36px; padding: 0 13px; border: 1px solid rgba(67, 133, 245, .5); border-radius: 9px; background: var(--accent-soft); color: var(--accent); cursor: pointer; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .export-button:hover:not(:disabled) { background: var(--accent-strong); color: #fff; }
+    .export-button:disabled { cursor: not-allowed; opacity: .48; }
+    .service-notice { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 18px; padding: 14px 16px; border: 1px solid rgba(243, 184, 75, .35); border-radius: 11px; background: var(--amber-soft); color: var(--text); }
+    .service-notice[hidden] { display: none; }
+    .service-notice strong { display: block; margin-bottom: 3px; color: var(--amber); font-size: 12px; }
+    .service-notice p { margin: 0; color: var(--muted); font-size: 11px; }
+    .service-notice a { flex: 0 0 auto; color: var(--accent); font-size: 11px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .metric-card, .panel {
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .metric-card { position: relative; min-height: 126px; padding: 16px 17px; overflow: hidden; }
+    .metric-card::after { position: absolute; top: -34px; right: -27px; width: 100px; height: 100px; border-radius: 50%; background: var(--accent-soft); content: ""; filter: blur(3px); }
+    .metric-top { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; }
+    .metric-icon { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-raised); color: var(--accent); font-size: 14px; }
+    .metric-value { position: relative; z-index: 1; margin-top: 9px; font-size: 29px; font-weight: 730; letter-spacing: -.04em; line-height: 1; }
+    .metric-foot { position: relative; z-index: 1; margin-top: 8px; color: var(--faint); font-size: 10px; }
+    .metric-foot.good { color: var(--green); }
+    .metric-foot.warn { color: var(--amber); }
+    .metric-foot.danger { color: var(--red); }
+
+    .dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 14px; margin-top: 14px; align-items: stretch; }
+    .panel { min-width: 0; padding: 17px; }
+    .panel-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+    .panel-heading h2 { margin: 0; font-size: 14px; font-weight: 680; letter-spacing: -.01em; }
+    .panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
+    .panel-meta { color: var(--faint); font-size: 10px; white-space: nowrap; }
+    .chart-legend { display: flex; align-items: center; gap: 14px; margin: 0 0 4px; color: var(--muted); font-size: 10px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .legend-line { width: 13px; height: 2px; border-radius: 2px; background: var(--accent); }
+    .legend-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
+    .chart-wrap { min-height: 205px; }
+    .chart-wrap svg { display: block; width: 100%; height: auto; min-height: 190px; overflow: visible; }
+    .chart-grid-line { stroke: var(--border); stroke-dasharray: 3 5; stroke-width: 1; }
+    .chart-axis-label { fill: var(--faint); font: 10px system-ui, sans-serif; }
+    .chart-area { fill: url(#eventArea); }
+    .chart-line { fill: none; stroke: var(--accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.5; }
+    .chart-point { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+    .chart-empty { display: grid; min-height: 185px; place-items: center; color: var(--faint); font-size: 12px; text-align: center; }
+
+    .severity-list { display: grid; gap: 17px; padding: 12px 0 9px; }
+    .severity-row { display: grid; grid-template-columns: 63px minmax(0, 1fr) 30px; align-items: center; gap: 10px; }
+    .severity-label { color: var(--muted); font-size: 11px; font-weight: 600; }
+    .severity-track { height: 8px; border-radius: 999px; background: var(--surface-raised); overflow: hidden; }
+    .severity-fill { height: 100%; min-width: 0; border-radius: inherit; transition: width .3s ease; }
+    .severity-fill.HIGH { background: var(--red); }
+    .severity-fill.MEDIUM { background: var(--amber); }
+    .severity-fill.LOW { background: var(--green); }
+    .severity-count { color: var(--text); font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; }
+    .chart-foot { display: flex; justify-content: space-between; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--border); color: var(--faint); font-size: 10px; }
+
+    .section-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, .92fr); gap: 14px; margin-top: 14px; }
+    .pipeline { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
+    .pipeline-step { position: relative; min-height: 90px; padding: 12px 11px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-raised); }
+    .pipeline-step:not(:last-child)::after { position: absolute; top: 18px; right: -10px; z-index: 1; width: 11px; height: 1px; background: var(--faint); content: ""; }
+    .step-number { color: var(--accent); font-size: 9px; font-weight: 750; letter-spacing: .12em; }
+    .step-title { margin-top: 7px; font-size: 11px; font-weight: 650; }
+    .step-caption { margin-top: 3px; color: var(--faint); font-size: 9px; line-height: 1.35; }
+    .sync-bar { height: 5px; margin-top: 16px; border-radius: 999px; background: var(--surface-raised); overflow: hidden; }
+    .sync-progress { height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, var(--accent-strong), var(--green)); transition: width .3s ease; }
+    .sync-caption { display: flex; justify-content: space-between; margin-top: 7px; color: var(--muted); font-size: 10px; }
+
+    .action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .action-button {
+      display: flex;
+      min-height: 47px;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--surface-raised);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: left;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .action-button:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--accent); background: var(--accent-soft); }
+    .action-button:disabled { cursor: not-allowed; opacity: .48; }
+    .action-icon { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border-radius: 7px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
+    .action-button.primary { border-color: rgba(67, 133, 245, .5); background: var(--accent-strong); color: #fff; }
+    .action-button.primary .action-icon { background: rgba(255, 255, 255, .18); color: #fff; }
+    .action-button.danger .action-icon { background: var(--red-soft); color: var(--red); }
+    .action-button.warning .action-icon { background: var(--amber-soft); color: var(--amber); }
+    .action-divider { grid-column: 1 / -1; margin: 3px 0 0; padding-top: 10px; border-top: 1px solid var(--border); color: var(--faint); font-size: 10px; }
+    .action-hint { grid-column: 1 / -1; margin: -2px 0 0; color: var(--faint); font-size: 10px; }
+    .custom-simulation { grid-column: 1 / -1; margin-top: 5px; padding-top: 13px; border-top: 1px solid var(--border); }
+    .custom-simulation h3 { margin: 0; font-size: 12px; font-weight: 680; }
+    .custom-simulation-note { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .simulation-cases { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+    .simulation-case { min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); color: var(--text); cursor: pointer; text-align: left; }
+    .simulation-case:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .simulation-case strong { display: block; font-size: 10px; }
+    .simulation-case span { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.4; }
+    .simulation-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; min-width: 0; margin: 12px 0 9px; padding: 0; border: 0; }
+    .simulation-fields label { display: grid; min-width: 0; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 650; }
+    .simulation-fields input, .simulation-fields select, .simulation-fields textarea { width: 100%; min-width: 0; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); color: var(--text); font: inherit; font-size: 11px; }
+    .simulation-fields input:focus, .simulation-fields select:focus, .simulation-fields textarea:focus { border-color: var(--accent); outline: 2px solid var(--accent-soft); }
+    .simulation-fields textarea { min-height: 58px; resize: vertical; }
+    .simulation-fields .field-wide { grid-column: 1 / -1; }
+    .simulation-fields .checkbox-label { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+    .simulation-fields input[type="checkbox"] { width: 15px; height: 15px; margin: 0; accent-color: var(--accent); }
+    .custom-submit { width: 100%; justify-content: center; }
+    .custom-result { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 10px; line-height: 1.5; }
+    .custom-result:empty { display: none; }
+    .transfer-feedback { margin: 9px 0 0; padding: 9px 10px; border: 1px solid rgba(220, 75, 75, .3); border-radius: 8px; background: var(--red-soft); color: var(--red); font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
+    .transfer-feedback[hidden] { display: none; }
+
+    .rule-list { display: grid; gap: 11px; }
+    .rule-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) 28px; align-items: center; gap: 9px; }
+    .rule-code { color: var(--accent); font-size: 10px; font-weight: 700; }
+    .rule-track { height: 6px; border-radius: 99px; background: var(--surface-raised); overflow: hidden; }
+    .rule-fill { height: 100%; border-radius: inherit; background: var(--accent); }
+    .rule-count { color: var(--muted); font-size: 10px; text-align: right; }
+
+    .table-panel { margin-top: 14px; }
+    .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--faint); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 10px; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 11px; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--accent-soft); }
+    .mono { color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; }
+    .level-badge, .delivery-badge { display: inline-flex; align-items: center; min-height: 20px; padding: 0 7px; border-radius: 6px; font-size: 9px; font-weight: 700; letter-spacing: .03em; }
+    .level-badge.HIGH { background: var(--red-soft); color: var(--red); }
+    .level-badge.MEDIUM { background: var(--amber-soft); color: var(--amber); }
+    .level-badge.LOW { background: var(--green-soft); color: var(--green); }
+    .delivery-badge.SENT, .delivery-badge.OK { background: var(--green-soft); color: var(--green); }
+    .delivery-badge.PENDING { background: var(--amber-soft); color: var(--amber); }
+    .empty-row { padding: 24px 10px; color: var(--faint); text-align: center; }
+    .audit-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); gap: 14px; margin-top: 14px; }
+    .audit-result { color: var(--green); font-weight: 700; }
+    .audit-result.bad { color: var(--red); }
+    .audit-detail { max-width: 440px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .test-summary { margin-left: 8px; color: var(--muted); font-size: 10px; font-weight: 500; }
+    .test-row td:first-child { width: 85px; font-weight: 700; }
+    .pass { color: var(--green); }
+    .fail { color: var(--red); }
+    .message {
+      position: fixed;
+      right: 24px;
+      bottom: 20px;
+      z-index: 10;
+      max-width: min(440px, calc(100vw - 32px));
+      padding: 12px 15px;
+      transform: translateY(20px);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-raised);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .message.show { transform: translateY(0); opacity: 1; }
+    .message.error { border-color: rgba(255, 107, 115, .5); color: var(--red); }
+    .loading { color: var(--faint); }
+    .footer-note { margin: 18px 0 0; color: var(--faint); font-size: 10px; text-align: center; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    @media (max-width: 1120px) {
+      .sidebar { width: 210px; }
+      .main { margin-left: 210px; padding-right: 22px; padding-left: 22px; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .dashboard-grid, .section-grid, .audit-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .sidebar { position: static; width: 100%; height: auto; padding: 13px 15px; border-right: 0; border-bottom: 1px solid var(--border); }
+      .brand { padding: 0 2px 12px; }
+      .nav-label, .sidebar-foot { display: none; }
+      .nav-list { display: flex; gap: 5px; overflow-x: auto; }
+      .nav-link { min-height: 35px; flex: 0 0 auto; padding: 0 9px; font-size: 11px; }
+      .nav-icon { display: none; }
+      .main { margin-left: 0; padding: 0 14px 28px; }
+      .topbar { position: static; min-height: 57px; }
+      .breadcrumb { font-size: 10px; }
+      .top-actions { gap: 6px; }
+      .status-pill { max-width: 120px; overflow: hidden; }
+      .status-pill .status-label { overflow: hidden; text-overflow: ellipsis; }
+      .page-heading { align-items: start; padding: 20px 0 16px; }
+      .heading-tools { align-items: end; }
+      .updated { display: none; }
+      .metric-grid { gap: 9px; }
+      .metric-card { min-height: 112px; padding: 12px; }
+      .metric-value { font-size: 25px; }
+      .panel { padding: 14px; }
+      .pipeline { grid-template-columns: 1fr; }
+      .pipeline-step { min-height: 69px; }
+      .pipeline-step:not(:last-child)::after { top: auto; right: auto; bottom: -9px; left: 19px; width: 1px; height: 10px; }
+      .chart-wrap { min-height: 170px; }
+      .chart-wrap svg { min-height: 160px; }
+      .audit-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 420px) {
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .action-grid { grid-template-columns: 1fr; }
+      .action-divider { grid-column: auto; }
+      .simulation-fields { grid-template-columns: 1fr; }
+      .simulation-fields .field-wide { grid-column: auto; }
+      .page-subtitle { font-size: 12px; }
+    }
+    @media (max-width: 520px) {
+      .simulation-cases { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#" aria-label="PQ Sentinel home">
+        <span class="brand-mark" aria-hidden="true">PQ</span>
+        <span><span class="brand-name">PQ Sentinel</span><span class="brand-caption">HONEYPOT CONSOLE</span></span>
+      </a>
+      <div class="nav-label">Workspace</div>
+      <nav class="nav-list">
+        <a class="nav-link active" href="#overview"><span class="nav-icon" aria-hidden="true">◫</span>Overview</a>
+        <a class="nav-link" href="#activity"><span class="nav-icon" aria-hidden="true">⌁</span>Threat activity</a>
+        <a class="nav-link" href="#integrity"><span class="nav-icon" aria-hidden="true">◇</span>Evidence pipeline</a>
+        <a class="nav-link" href="#events"><span class="nav-icon" aria-hidden="true">▤</span>Event log</a>
+      </nav>
+      <div class="sidebar-foot">
+        <div class="service-card">
+          <div class="service-title"><span>Collector link</span><span id="sideCollectorState" class="pulse-dot" aria-label="Checking"></span></div>
+          <div class="service-state" id="sideCollectorLabel">Checking connection…</div>
+        </div>
+        <div class="sidebar-note">Local research dashboard · Demo actions affect only configured demo data.</div>
+      </div>
+    </aside>
+
+    <main class="main" id="overview">
+      <header class="topbar">
+        <div class="breadcrumb">Security operations <span aria-hidden="true">/</span> <strong>Overview</strong></div>
+        <div class="top-actions">
+          <span class="status-pill" id="connectionPill"><span class="pulse-dot" aria-hidden="true"></span><span class="status-label" id="connectionLabel">Connecting</span></span>
+        </div>
+      </header>
+
+      <aside class="service-notice" id="serviceNotice" hidden role="alert">
+        <div><strong id="serviceNoticeTitle">Dashboard service unavailable</strong><p id="serviceNoticeText">Open the honeypot service to use dashboard controls.</p></div>
+        <a href="http://localhost:8080/">Open honeypot dashboard</a>
+      </aside>
+
+      <section class="page-heading">
+        <div>
+          <p class="eyebrow">Local threat intelligence</p>
+          <h1>Security overview</h1>
+          <p class="page-subtitle">Monitor captured activity, inspect risk signals, and verify that evidence reaches the collector intact.</p>
+        </div>
+        <div class="heading-tools">
+          <button class="export-button" id="exportEvidence" type="button" disabled>⇩ Export evidence</button>
+          <div class="updated">Last refreshed <time id="lastUpdated">—</time></div>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Security metrics">
+        <article class="metric-card">
+          <div class="metric-top"><span>Events captured</span><span class="metric-icon" aria-hidden="true">▤</span></div>
+          <div class="metric-value" id="total">—</div>
+          <div class="metric-foot" id="eventsFoot">Hash-linked requests recorded</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-top"><span>Pending forward</span><span class="metric-icon" aria-hidden="true">⇧</span></div>
+          <div class="metric-value" id="pend">—</div>
+          <div class="metric-foot" id="pendingFoot">Waiting for collector acknowledgement</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-top"><span>Evidence stored</span><span class="metric-icon" aria-hidden="true">◈</span></div>
+          <div class="metric-value" id="recs">—</div>
+          <div class="metric-foot" id="collectorFoot">Collector records verified</div>
+        </article>
+        <article class="metric-card">
+          <div class="metric-top"><span>High-risk events</span><span class="metric-icon" aria-hidden="true">!</span></div>
+          <div class="metric-value" id="highRisk">—</div>
+          <div class="metric-foot" id="highRiskFoot">Across recorded activity</div>
+        </article>
+      </section>
+
+      <section class="dashboard-grid" id="activity">
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Risk activity</h2><p>Risk score by event sequence · latest 25 events</p></div>
+            <span class="panel-meta">0–100 score</span>
+          </div>
+          <div class="chart-legend"><span class="legend-item"><i class="legend-line"></i>Risk score</span><span class="legend-item"><i class="legend-dot"></i>High risk ≥ 70</span></div>
+          <div class="chart-wrap" id="eventChart" role="img" aria-label="Risk score chart for recent events"><div class="chart-empty">Waiting for event data…</div></div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Risk distribution</h2><p>Recorded events by severity</p></div>
+            <span class="panel-meta">All events</span>
+          </div>
+          <div class="severity-list" id="severityChart"><div class="loading">Waiting for event data…</div></div>
+          <div class="chart-foot"><span>Severity based on configured rule weights</span><span id="severityTotal">— total</span></div>
+        </article>
+      </section>
+
+      <section class="section-grid" id="integrity">
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Evidence pipeline</h2><p>Source events move through encrypted forwarding to collector verification.</p></div>
+            <span class="panel-meta" id="pipelineStatus">Checking</span>
+          </div>
+          <div class="pipeline" aria-label="Evidence processing steps">
+            <div class="pipeline-step"><div class="step-number">STEP 01</div><div class="step-title">Capture &amp; chain</div><div class="step-caption">Request scored and linked to prior event</div></div>
+            <div class="pipeline-step"><div class="step-number">STEP 02</div><div class="step-title">Encrypt &amp; forward</div><div class="step-caption">Authenticated session protects evidence batch</div></div>
+            <div class="pipeline-step"><div class="step-number">STEP 03</div><div class="step-title">Verify &amp; store</div><div class="step-caption">Collector checks sequence and integrity</div></div>
+          </div>
+          <div class="sync-bar" aria-label="Forwarding completion"><div class="sync-progress" id="syncProgress"></div></div>
+          <div class="sync-caption"><span id="syncLabel">No forwarding data yet</span><span id="syncPercent">—</span></div>
+          <p class="transfer-feedback" id="transferFeedback" role="status" hidden></p>
+        </article>
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Run a scenario</h2><p>Generate local test activity and exercise the evidence flow.</p></div>
+            <span class="panel-meta">Demo controls</span>
+          </div>
+          <div class="action-grid">
+            <button class="action-button" type="button" data-action="simulate/bruteforce" disabled><span class="action-icon" aria-hidden="true">⌁</span>Brute-force pattern</button>
+            <button class="action-button" type="button" data-action="simulate/scanner" disabled><span class="action-icon" aria-hidden="true">⌕</span>Scanner / injection</button>
+            <button class="action-button" type="button" data-action="simulate/honeytoken" disabled><span class="action-icon" aria-hidden="true">♢</span>Honeytoken login</button>
+            <button class="action-button" type="button" data-action="simulate/benign" disabled><span class="action-icon" aria-hidden="true">◌</span>Benign user</button>
+            <div class="action-divider">Evidence actions</div>
+            <button class="action-button primary" type="button" data-action="forward" disabled><span class="action-icon" aria-hidden="true">⇧</span>Forward evidence now</button>
+            <button class="action-button warning" type="button" data-action="demo/tamper" disabled><span class="action-icon" aria-hidden="true">⚠</span>Tamper demo</button>
+            <p class="action-hint" id="tamperHint">Generate a local event first. Tamper it while pending, then forward to observe rejection.</p>
+            <form class="custom-simulation" id="customSimulationForm">
+              <h3>Try your own event</h3>
+              <p class="custom-simulation-note">Choose a sample or enter a synthetic event. Each submission adds one event to the local demo database. When forwarding is checked, the full pending batch is sent to the collector.</p>
+              <div class="simulation-cases" aria-label="Sample test cases">
+                <button class="simulation-case" type="button" data-test-case="benign">
+                  <strong>1 · Benign baseline</strong><span>Expected: LOW, no rule signals</span>
+                </button>
+                <button class="simulation-case" type="button" data-test-case="scanner">
+                  <strong>2 · Scanner user agent</strong><span>Expected: R5, score 20 LOW</span>
+                </button>
+                <button class="simulation-case" type="button" data-test-case="injection">
+                  <strong>3 · Scanner + sensitive path</strong><span>Expected: R5, R6, R7; score 65 HIGH</span>
+                </button>
+              </div>
+              <fieldset class="simulation-fields" id="customSimulationFields" disabled>
+                <label>Source IP
+                  <input id="simulationIp" name="sourceIp" type="text" value="203.0.113.42" maxlength="45" pattern="[0-9A-Fa-f:.]+" required>
+                </label>
+                <label>Method
+                  <select id="simulationMethod" name="method">
+                    <option>GET</option><option selected>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option><option>HEAD</option>
+                  </select>
+                </label>
+                <label class="field-wide">Endpoint
+                  <input id="simulationEndpoint" name="endpoint" type="text" value="/login" maxlength="200" placeholder="/admin" required>
+                </label>
+                <label>Username (optional)
+                  <input id="simulationUsername" name="username" type="text" maxlength="64" placeholder="test-user">
+                </label>
+                <label>User agent
+                  <input id="simulationUserAgent" name="userAgent" type="text" value="dashboard-simulator/1.0" maxlength="160">
+                </label>
+                <label class="field-wide">Query or payload (optional)
+                  <textarea id="simulationPayload" name="payload" maxlength="512" placeholder="Example: query=sample"></textarea>
+                </label>
+                <label class="checkbox-label field-wide"><input id="simulationFailedLogin" name="failedLogin" type="checkbox"> Failed login attempt</label>
+                <label class="checkbox-label field-wide"><input id="simulationForwardAfterSubmit" name="forwardAfterSubmit" type="checkbox" checked> Forward pending evidence batch after recording</label>
+              </fieldset>
+              <button class="action-button primary custom-submit" id="customSimulationSubmit" type="submit" disabled>Simulate test event</button>
+              <p class="custom-simulation-note" id="customSimulationHint">Custom simulation requires the honeypot service with demo mode enabled.</p>
+              <div class="custom-result" id="customSimulationResult" role="status" aria-live="polite"></div>
+            </form>
+          </div>
+        </article>
+      </section>
+
+      <section class="section-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Rule signals</h2><p>Most frequent identifiers in the latest event window</p></div>
+            <span class="panel-meta">Latest 25</span>
+          </div>
+          <div class="rule-list" id="ruleChart"><div class="loading">Waiting for event data…</div></div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Self-test suite</h2><p>Exercise local cryptographic and integrity checks.</p></div>
+            <button class="icon-button" id="runTests" type="button" aria-label="Run self-tests" title="Run self-tests" disabled>▶</button>
+          </div>
+          <div class="test-summary" id="sum" aria-live="polite">Not run in this session</div>
+          <div class="table-wrap" style="margin-top:8px"><table id="tests" aria-label="Self-test results"><tbody><tr><td class="empty-row">Run the self-tests to see results.</td></tr></tbody></table></div>
+        </article>
+      </section>
+
+      <section class="panel table-panel" id="events">
+        <div class="panel-heading table-toolbar">
+          <div><h2>Recent events</h2><p>Latest source records and their forwarding state</p></div>
+          <span class="panel-meta">Newest first · up to 25</span>
+        </div>
+        <div class="table-wrap">
+          <table id="ev" aria-label="Recent honeypot events">
+            <thead><tr><th>Sequence</th><th>Time</th><th>Source</th><th>Endpoint</th><th>Risk</th><th>Level</th><th>Rule signals</th><th>Delivery</th></tr></thead>
+            <tbody><tr><td colspan="8" class="empty-row">Waiting for event data…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="audit-grid">
+        <article class="panel">
+          <div class="panel-heading">
+            <div><h2>Collector audit</h2><p>Recent acceptance and integrity decisions</p></div>
+            <span class="panel-meta">Latest 15</span>
+          </div>
+          <div class="table-wrap">
+            <table id="audit" aria-label="Collector audit log">
+              <thead><tr><th>Time</th><th>Result</th><th>Details</th></tr></thead>
+              <tbody><tr><td colspan="3" class="empty-row">Waiting for collector data…</td></tr></tbody>
+            </table>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="panel-heading"><div><h2>System notes</h2><p>Environment and safety context</p></div></div>
+          <ul style="margin:0;padding-left:17px;color:var(--muted);font-size:11px;line-height:1.75">
+            <li>Dashboard data refreshes automatically every 3 seconds.</li>
+            <li>Scenario buttons create synthetic local events.</li>
+            <li>Tamper requires demo mode and a pending event.</li>
+            <li>Do not connect demo controls to production databases.</li>
+          </ul>
+        </article>
+      </section>
+      <p class="footer-note">PQ Sentinel · Local research prototype · Verify all results against the collector audit trail</p>
+    </main>
+  </div>
+  <div class="message" id="message" role="status" aria-live="polite"></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const safeText = value => String(value == null ? "" : value).replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[char]));
+    let loading = false;
+    let actionRunning = false;
+    let serviceAvailable = false;
+    let testsRunning = false;
+    let customSimulationAvailable = false;
+    let lastDashboard = null;
+    let selectedSimulationTest = null;
+    let messageTimer;
+
+    function showMessage(text, isError = false) {
+      const box = $("message");
+      box.textContent = text;
+      box.classList.toggle("error", isError);
+      box.classList.add("show");
+      clearTimeout(messageTimer);
+      messageTimer = setTimeout(() => box.classList.remove("show"), 4200);
+    }
+
+    async function request(url, options = {}) {
+      const response = await fetch(url, options);
+      const body = await response.text();
+      if (!response.ok) throw new Error(body || `Request failed (${response.status})`);
+      return body;
+    }
+
+    function countByLevel(levels, name) {
+      const row = (levels || []).find(item => String(item.lvl).toUpperCase() === name);
+      return row ? Number(row.n) || 0 : 0;
+    }
+
+    function formatTime(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? safeText(value) : date.toLocaleString([], { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+
+    function renderEventChart(events) {
+      const host = $("eventChart");
+      const ordered = [...(events || [])].sort((a, b) => Number(a.seq_no) - Number(b.seq_no));
+      if (!ordered.length) {
+        host.innerHTML = '<div class="chart-empty">No events yet.<br>Run a scenario to populate the activity chart.</div>';
+        return;
+      }
+
+      const width = 760, height = 205, left = 38, right = 12, top = 14, bottom = 28;
+      const plotWidth = width - left - right, plotHeight = height - top - bottom;
+      const x = index => left + (ordered.length === 1 ? plotWidth / 2 : index * plotWidth / (ordered.length - 1));
+      const y = event => top + (1 - Math.max(0, Math.min(100, Number(event.risk_score) || 0)) / 100) * plotHeight;
+      const points = ordered.map((event, index) => `${x(index).toFixed(1)},${y(event).toFixed(1)}`).join(" ");
+      const area = `${left},${top + plotHeight} ${points} ${left + plotWidth},${top + plotHeight}`;
+      const grid = [0, 50, 100].map(score => {
+        const yy = top + (1 - score / 100) * plotHeight;
+        return `<line class="chart-grid-line" x1="${left}" y1="${yy}" x2="${left + plotWidth}" y2="${yy}"></line><text class="chart-axis-label" x="3" y="${yy + 3}">${score}</text>`;
+      }).join("");
+      const dots = ordered.map((event, index) => {
+        const score = Math.max(0, Math.min(100, Number(event.risk_score) || 0));
+        const className = score >= 70 ? "chart-point high-point" : "chart-point";
+        const color = score >= 70 ? "var(--red)" : "var(--accent)";
+        return `<circle class="${className}" cx="${x(index).toFixed(1)}" cy="${y(event).toFixed(1)}" r="3.3" style="stroke:${color}"><title>Event ${Number(event.seq_no)}: score ${score}</title></circle>`;
+      }).join("");
+      const first = Number(ordered[0].seq_no), last = Number(ordered[ordered.length - 1].seq_no);
+      host.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Risk scores from event ${first} to ${last}">
+        <defs><linearGradient id="eventArea" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity=".24"></stop><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"></stop></linearGradient></defs>
+        ${grid}<polygon class="chart-area" points="${area}"></polygon><polyline class="chart-line" points="${points}"></polyline>${dots}
+        <text class="chart-axis-label" x="${left}" y="${height - 5}">#${first}</text><text class="chart-axis-label" text-anchor="end" x="${left + plotWidth}" y="${height - 5}">#${last}</text>
+      </svg>`;
+    }
+
+    function renderSeverity(levels) {
+      const host = $("severityChart");
+      const names = ["HIGH", "MEDIUM", "LOW"];
+      const counts = names.map(name => countByLevel(levels, name));
+      const max = Math.max(1, ...counts);
+      host.innerHTML = names.map((name, index) => {
+        const count = counts[index];
+        const percent = count ? Math.max(4, count / max * 100) : 0;
+        return `<div class="severity-row"><span class="severity-label">${name}</span><div class="severity-track"><div class="severity-fill ${name}" style="width:${percent}%"></div></div><span class="severity-count">${count}</span></div>`;
+      }).join("");
+      $("severityTotal").textContent = `${counts.reduce((sum, value) => sum + value, 0)} total`;
+    }
+
+    function renderRules(events) {
+      const counts = new Map();
+      for (const event of events || []) {
+        for (const token of String(event.rules_hit || "").split(",")) {
+          const match = token.trim().match(/^(R\d+[A-Z]?)(?:=|$)/);
+          if (match) counts.set(match[1], (counts.get(match[1]) || 0) + 1);
+        }
+      }
+      const top = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 6);
+      const host = $("ruleChart");
+      if (!top.length) {
+        host.innerHTML = '<div class="chart-empty">Rule signals will appear here after events are recorded.</div>';
+        return;
+      }
+      const max = Math.max(...top.map(([, count]) => count));
+      host.innerHTML = top.map(([rule, count]) => `<div class="rule-row"><span class="rule-code">${safeText(rule)}</span><div class="rule-track"><div class="rule-fill" style="width:${Math.max(4, count / max * 100)}%"></div></div><span class="rule-count">${count}</span></div>`).join("");
+    }
+
+    function renderEvents(events) {
+      const body = $("ev").querySelector("tbody");
+      if (!events || !events.length) {
+        body.innerHTML = '<tr><td colspan="8" class="empty-row">No events recorded yet. Generate a local scenario to get started.</td></tr>';
+        return;
+      }
+      body.innerHTML = events.map(event => {
+        const level = ["HIGH", "MEDIUM", "LOW"].includes(String(event.risk_level).toUpperCase()) ? String(event.risk_level).toUpperCase() : "LOW";
+        const status = String(event.sent_status || "PENDING").toUpperCase();
+        const safeStatus = ["SENT", "PENDING"].includes(status) ? status : "PENDING";
+        return `<tr>
+          <td class="mono">#${Number(event.seq_no) || 0}</td>
+          <td>${formatTime(event.event_time)}</td>
+          <td class="mono">${safeText(event.source_ip || "—")}</td>
+          <td class="mono">${safeText(event.endpoint || "—")}</td>
+          <td class="mono">${Math.max(0, Number(event.risk_score) || 0)}</td>
+          <td><span class="level-badge ${level}">${level}</span></td>
+          <td class="mono">${safeText(event.rules_hit || "—")}</td>
+          <td><span class="delivery-badge ${safeStatus}">${safeStatus}</span></td>
+        </tr>`;
+      }).join("");
+    }
+
+    function renderAudit(audit) {
+      const body = $("audit").querySelector("tbody");
+      if (!audit || !audit.length) {
+        body.innerHTML = '<tr><td colspan="3" class="empty-row">No collector audit entries available.</td></tr>';
+        return;
+      }
+      body.innerHTML = audit.map(item => {
+        const ok = String(item.result).toUpperCase() === "OK";
+        return `<tr><td>${formatTime(item.at)}</td><td class="audit-result ${ok ? "" : "bad"}">${safeText(item.result || "UNKNOWN")}</td><td class="audit-detail" title="${safeText(item.detail || "")}">${safeText(item.detail || "—")}</td></tr>`;
+      }).join("");
+    }
+
+    function renderTests(results) {
+      const body = $("tests").querySelector("tbody");
+      body.innerHTML = results.map(test => {
+        const passed = Boolean(test.pass);
+        return `<tr class="test-row"><td class="${passed ? "pass" : "fail"}">${passed ? "✓ PASS" : "✕ FAIL"}</td><td>${safeText(test.name)}</td><td>${safeText(test.detail)}</td></tr>`;
+      }).join("");
+      const passedCount = results.filter(test => test.pass).length;
+      $("sum").textContent = `${passedCount}/${results.length} passed`;
+    }
+
+    function updateControls(available, demoMode = false, pending = 0) {
+      serviceAvailable = available;
+      document.querySelectorAll("[data-action]").forEach(button => {
+        const needsPending = button.dataset.action === "demo/tamper";
+        button.disabled = !available || actionRunning || (needsPending && (!demoMode || pending < 1));
+      });
+      $("runTests").disabled = !available || testsRunning;
+      $("exportEvidence").disabled = !available || actionRunning;
+      const canSimulateCustom = available && demoMode && customSimulationAvailable && !actionRunning;
+      $("customSimulationFields").disabled = !canSimulateCustom;
+      $("customSimulationSubmit").disabled = !canSimulateCustom;
+      document.querySelectorAll("[data-test-case]").forEach(button => { button.disabled = !canSimulateCustom; });
+      $("customSimulationHint").textContent = !available
+        ? "Connect to the honeypot dashboard to simulate a custom event."
+        : demoMode
+          ? customSimulationAvailable
+            ? "Each submission writes one synthetic event to the demo database. Forwarding is enabled unless you uncheck the option."
+            : "Restart the honeypot service to enable custom simulation."
+          : "Custom simulation is disabled unless demo mode is enabled.";
+      $("tamperHint").textContent = !demoMode
+        ? "Tamper control requires demo mode."
+        : pending > 0
+          ? `${pending} event${pending === 1 ? "" : "s"} pending. Tamper before forwarding to test collector rejection.`
+          : "No pending event to tamper with. Generate a local scenario first.";
+    }
+
+    function updateDashboard(data) {
+      lastDashboard = data;
+      customSimulationAvailable = data.customSimulationAvailable === true;
+      const stats = data.stats || {};
+      const levels = stats.byLevel || [];
+      const events = data.events || [];
+      const high = countByLevel(levels, "HIGH");
+      const pending = Math.max(0, Number(stats.pending) || 0);
+      const total = Math.max(0, Number(stats.total) || 0);
+      const collector = data.collector || {};
+      const collectorOnline = !collector.error && Number.isFinite(Number(collector.records));
+      const collectorRecords = collectorOnline ? Math.max(0, Number(collector.records) || 0) : null;
+      const demoMode = Boolean(data.demoMode);
+      const transferStatus = String(data.lastTransfer || "NO_TRANSFER_YET");
+      const transferFailed = transferStatus.startsWith("ERROR:");
+      $("serviceNotice").hidden = true;
+      updateControls(true, demoMode, pending);
+
+      $("total").textContent = total.toLocaleString();
+      $("pend").textContent = pending.toLocaleString();
+      $("recs").textContent = collectorOnline ? collectorRecords.toLocaleString() : "—";
+      $("highRisk").textContent = high.toLocaleString();
+      $("eventsFoot").textContent = `${(events || []).length} recent event${events.length === 1 ? "" : "s"} shown`;
+      $("pendingFoot").textContent = pending === 0 ? "All recorded events are forwarded" : "Awaiting collector acknowledgement";
+      $("pendingFoot").className = `metric-foot ${pending === 0 ? "good" : "warn"}`;
+      $("collectorFoot").textContent = collectorOnline ? "Collector records stored" : "Collector is unreachable";
+      $("collectorFoot").className = `metric-foot ${collectorOnline ? "good" : "danger"}`;
+      $("highRiskFoot").textContent = high ? "Review high-risk records below" : "No high-risk events recorded";
+      $("highRiskFoot").className = `metric-foot ${high ? "danger" : "good"}`;
+      $("lastUpdated").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+      const connection = $("connectionPill");
+      connection.classList.toggle("offline", !collectorOnline);
+      $("connectionLabel").textContent = collectorOnline ? "Collector connected" : "Collector offline";
+      $("sideCollectorState").classList.toggle("offline", !collectorOnline);
+      $("sideCollectorLabel").textContent = collectorOnline ? "Healthy · accepting status" : "Unavailable · check service";
+      $("pipelineStatus").textContent = transferFailed ? "Forwarding error" : collectorOnline ? (pending ? "Awaiting sync" : "Connected") : "Collector offline";
+      $("pipelineStatus").title = transferStatus;
+      $("pipelineStatus").style.color = transferFailed ? "var(--red)" : collectorOnline ? (pending ? "var(--amber)" : "var(--green)") : "var(--red)";
+
+      const ratio = total ? Math.max(0, Math.min(100, (total - pending) / total * 100)) : 0;
+      $("syncProgress").style.width = `${ratio}%`;
+      $("syncLabel").textContent = transferFailed
+        ? "Latest forwarding attempt failed"
+        : collectorOnline
+          ? `${Math.max(0, total - pending).toLocaleString()} of ${total.toLocaleString()} source events forwarded`
+          : "Waiting for collector connection";
+      $("syncPercent").textContent = transferFailed ? "Error" : collectorOnline && total ? `${Math.round(ratio)}%` : "—";
+      $("transferFeedback").hidden = !transferFailed;
+      $("transferFeedback").textContent = transferFailed
+        ? `${transferStatus} Pending events remain on the honeypot; check collector authentication and configuration.`
+        : "";
+
+      renderEventChart(events);
+      renderSeverity(levels);
+      renderRules(events);
+      renderEvents(events);
+      renderAudit(collector.audit || []);
+    }
+
+    function exportEvidence() {
+      if (!serviceAvailable || !lastDashboard) return;
+      const data = lastDashboard;
+      const events = (data.events || []).map(event => ({
+        sequence: Number(event.seq_no) || 0,
+        eventTime: event.event_time || null,
+        sourceIp: event.source_ip || null,
+        endpoint: event.endpoint || null,
+        riskScore: Number(event.risk_score) || 0,
+        riskLevel: event.risk_level || null,
+        ruleSignals: event.rules_hit || "",
+        delivery: event.sent_status || null
+      }));
+      const report = {
+        report: "PQ Sentinel dashboard evidence",
+        exportedAt: new Date().toISOString(),
+        source: location.origin,
+        scope: `Current dashboard snapshot: ${events.length} recent events and up to 15 collector audit entries.`,
+        summary: {
+          demoMode: Boolean(data.demoMode),
+          sourceStats: data.stats || {},
+          collectorRecords: data.collector && Number.isFinite(Number(data.collector.records)) ? Number(data.collector.records) : null,
+          lastTransfer: data.lastTransfer || null
+        },
+        recentEvents: events,
+        collectorAudit: data.collector && Array.isArray(data.collector.audit) ? data.collector.audit : []
+      };
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `pq-sentinel-evidence-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showMessage("Evidence snapshot downloaded locally. Review IP addresses and audit details before sharing.");
+    }
+
+    async function loadDashboard() {
+      if (loading) return;
+      loading = true;
+      try {
+        const response = await fetch("/internal/overview");
+        const body = await response.text();
+        if (response.status === 404) {
+          if (location.port === "9090" && ["localhost", "127.0.0.1", "::1"].includes(location.hostname)) {
+            location.replace(`${location.protocol}//${location.hostname}:8080/`);
+            return;
+          }
+          updateControls(false);
+          $("connectionPill").classList.add("offline");
+          $("connectionLabel").textContent = "API unavailable";
+          $("sideCollectorState").classList.add("offline");
+          $("sideCollectorLabel").textContent = "Dashboard API unavailable";
+          $("pipelineStatus").textContent = "API unavailable";
+          $("pipelineStatus").style.color = "var(--red)";
+          $("serviceNoticeTitle").textContent = "Dashboard API unavailable";
+          $("serviceNoticeText").textContent = "Open the honeypot dashboard service to view activity and use demo controls.";
+          $("serviceNotice").hidden = false;
+          return;
+        }
+        if (!response.ok) throw new Error(body || `Dashboard request failed (${response.status})`);
+        updateDashboard(JSON.parse(body));
+      } catch (error) {
+        updateControls(false);
+        $("connectionPill").classList.add("offline");
+        $("connectionLabel").textContent = "Dashboard unavailable";
+        $("sideCollectorState").style.background = "var(--red)";
+        $("sideCollectorLabel").textContent = "Cannot reach honeypot service";
+        $("pipelineStatus").textContent = "Unavailable";
+        $("pipelineStatus").style.color = "var(--red)";
+        $("serviceNoticeTitle").textContent = "Dashboard service unavailable";
+        $("serviceNoticeText").textContent = "The honeypot dashboard API could not be reached. Start the honeypot service and open its dashboard on port 8080.";
+        $("serviceNotice").hidden = false;
+        showMessage("Dashboard unavailable. Check that the honeypot service is running.", true);
+      } finally {
+        loading = false;
+      }
+    }
+
+    async function runTests() {
+      if (!serviceAvailable || testsRunning) return;
+      testsRunning = true;
+      $("runTests").disabled = true;
+      $("sum").textContent = "Running checks…";
+      try {
+        const body = await request("/internal/selftest", { method: "POST" });
+        renderTests(JSON.parse(body));
+      } catch (error) {
+        $("sum").textContent = "Self-test failed to run";
+        showMessage(`Self-test request failed: ${error.message}`, true);
+      } finally {
+        testsRunning = false;
+        $("runTests").disabled = !serviceAvailable;
+      }
+    }
+
+    async function runAction(path, button) {
+      if (actionRunning) return;
+      if (path === "demo/tamper" && !confirm("Modify the newest pending demo event to test chain verification?")) return;
+      actionRunning = true;
+      document.querySelectorAll("[data-action]").forEach(item => { item.disabled = true; });
+      $("customSimulationFields").disabled = true;
+      $("customSimulationSubmit").disabled = true;
+      const originalLabel = button.textContent.trim();
+      button.setAttribute("aria-busy", "true");
+      try {
+        const result = await request(`/internal/${path}`, { method: "POST" });
+        showMessage(result || "Action completed.");
+        await loadDashboard();
+      } catch (error) {
+        showMessage(`Action failed: ${error.message}`, true);
+      } finally {
+        actionRunning = false;
+        button.removeAttribute("aria-busy");
+        button.setAttribute("aria-label", originalLabel);
+        await loadDashboard();
+      }
+    }
+
+    async function runCustomSimulation(event) {
+      event.preventDefault();
+      if (!serviceAvailable || actionRunning || !customSimulationAvailable || !lastDashboard || !lastDashboard.demoMode) return;
+      actionRunning = true;
+      const currentPending = Number(lastDashboard.stats && lastDashboard.stats.pending) || 0;
+      updateControls(true, true, currentPending);
+      $("customSimulationResult").textContent = "Recording your test event…";
+      const simulation = {
+        sourceIp: $("simulationIp").value.trim(),
+        username: $("simulationUsername").value.trim() || null,
+        endpoint: $("simulationEndpoint").value.trim(),
+        method: $("simulationMethod").value,
+        userAgent: $("simulationUserAgent").value.trim(),
+        payload: $("simulationPayload").value.trim() || null,
+        failedLogin: $("simulationFailedLogin").checked
+      };
+      let createdEvent = null;
+      try {
+        const body = await request("/internal/simulate/custom", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(simulation)
+        });
+        createdEvent = JSON.parse(body);
+        const eventSummary = `Event #${createdEvent.seq} · risk ${createdEvent.score}/100 (${createdEvent.level}) · rule signals: ${createdEvent.rules || "none"}.`;
+        const testCase = selectedSimulationTest ? simulationCases[selectedSimulationTest] : null;
+        const observedSignals = createdEvent.rules ? createdEvent.rules.split(",") : [];
+        const testPassed = testCase
+          && createdEvent.score === testCase.expected.score
+          && createdEvent.level === testCase.expected.level
+          && (testCase.expected.signals.length
+            ? testCase.expected.signals.every(signal => observedSignals.includes(signal))
+            : observedSignals.length === 0);
+        const caseSummary = testCase ? ` Sample check ${testPassed ? "PASS" : "FAIL"} (expected ${testCase.expected.label}).` : "";
+        if ($("simulationForwardAfterSubmit").checked) {
+          $("customSimulationResult").textContent = `${eventSummary} Forwarding now…`;
+          const transfer = await request("/internal/forward", { method: "POST" });
+          if (!transfer.startsWith("OK ")) throw new Error(transfer || "Collector did not confirm the transfer");
+          $("customSimulationResult").textContent = `${eventSummary}${caseSummary} Collector accepted ${transfer}.`;
+          showMessage(`Event #${createdEvent.seq} was accepted by the collector.`);
+        } else {
+          $("customSimulationResult").textContent = `${eventSummary}${caseSummary} It is pending; use “Forward evidence now” when ready.`;
+          showMessage(`Event #${createdEvent.seq} recorded locally and left pending.`);
+        }
+      } catch (error) {
+        const failure = createdEvent
+          ? `Event #${createdEvent.seq} was recorded, but forwarding failed: ${error.message}. It remains pending.`
+          : `Simulation failed: ${error.message}`;
+        $("customSimulationResult").textContent = failure;
+        showMessage(failure, true);
+      } finally {
+        actionRunning = false;
+        await loadDashboard();
+      }
+    }
+
+    const simulationCases = {
+      benign: { sourceIp: "192.0.2.10", username: "", endpoint: "/health", method: "GET", userAgent: "Mozilla/5.0", payload: "", failedLogin: false, expected: { label: "LOW with no rule signals", score: 0, level: "LOW", signals: [] } },
+      scanner: { sourceIp: "192.0.2.11", username: "", endpoint: "/health", method: "GET", userAgent: "sqlmap/1.7", payload: "", failedLogin: false, expected: { label: "R5, score 20 LOW", score: 20, level: "LOW", signals: ["R5"] } },
+      injection: { sourceIp: "192.0.2.12", username: "", endpoint: "/.env", method: "GET", userAgent: "sqlmap/1.7", payload: "id=1' OR '1'='1", failedLogin: false, expected: { label: "R5, R6, R7, score 65 HIGH", score: 65, level: "HIGH", signals: ["R5", "R6", "R7"] } }
+    };
+    $("customSimulationFields").querySelectorAll("input:not([type=checkbox]), select, textarea").forEach(field => {
+      field.addEventListener("input", () => { selectedSimulationTest = null; });
+      field.addEventListener("change", () => { selectedSimulationTest = null; });
+    });
+    document.querySelectorAll("[data-test-case]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.disabled) return;
+        const testCase = simulationCases[button.dataset.testCase];
+        if (!testCase) return;
+        selectedSimulationTest = button.dataset.testCase;
+        $("simulationIp").value = testCase.sourceIp;
+        $("simulationUsername").value = testCase.username;
+        $("simulationEndpoint").value = testCase.endpoint;
+        $("simulationMethod").value = testCase.method;
+        $("simulationUserAgent").value = testCase.userAgent;
+        $("simulationPayload").value = testCase.payload;
+        $("simulationFailedLogin").checked = testCase.failedLogin;
+        $("customSimulationResult").textContent = `Sample loaded. Expected result: ${testCase.expected.label}. The event will be forwarded after recording unless you uncheck that option.`;
+      });
+    });
+
+    document.querySelectorAll("[data-action]").forEach(button => {
+      button.addEventListener("click", () => runAction(button.dataset.action, button));
+    });
+    $("customSimulationForm").addEventListener("submit", runCustomSimulation);
+    $("runTests").addEventListener("click", runTests);
+    $("exportEvidence").addEventListener("click", exportEvidence);
+
+    loadDashboard();
+    window.setInterval(loadDashboard, 3000);
+  </script>
+</body>
+</html>

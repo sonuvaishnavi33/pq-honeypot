@@ -1,0 +1,23 @@
+﻿PASS  honest epoch 0 verifies
+PASS  honest epoch 1 verifies
+PASS  honest epoch 2 verifies
+PASS  honest epoch 3 verifies
+PASS  honest epoch 4 verifies
+PASS  honest epoch 5 verifies
+PASS  replayed epoch is refused
+PASS  forged tag for an OLD epoch using the stolen key is rejected
+PASS  editing the chain head of a sealed epoch is rejected
+PASS  verifier state survives export/restore
+PASS  skipping an epoch is reported as a gap
+PASS  single-encoded union select is visible
+PASS  double-encoded union select is visible
+PASS  comment-obfuscated UNION SELECT is visible
+PASS  benign text produces no SQL keyword
+PASS  malformed encoding is flagged, not thrown
+PASS  nearest-rank p95 of 5 values is the maximum
+PASS  bootstrap CI brackets the mean
+PASS  Wilson lower bound for 200/200 is below 1 but above 0.98
+PASS  KEM mode X25519 both sides agree (44 bytes on the wire)
+PASS  KEM mode ML_KEM_768 both sides agree (1088 bytes on the wire)
+PASS  KEM mode HYBRID both sides agree (1132 bytes on the wire)
+ALL CHECKS PASSED

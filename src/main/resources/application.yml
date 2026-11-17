@@ -1,0 +1,64 @@
+# Every value is overridable by environment variable. Nothing secret is stored here.
+app:
+  node-id: ${NODE_ID:honeypot-01}
+  psk: ${APP_PSK}                     # REQUIRED: shared secret that authenticates handshake (see README)
+  collector-url: ${COLLECTOR_URL:http://localhost:9090}
+  batch-size: ${BATCH_SIZE:50}
+  forward-interval-ms: ${FORWARD_INTERVAL_MS:5000}
+  session-max-batches: ${SESSION_MAX_BATCHES:1000}   # re-handshake after this many batches
+  handshake-max-age-sec: ${HANDSHAKE_MAX_AGE_SEC:30}
+  demo-mode: ${DEMO_MODE:true}
+  rules:
+    brute-window-sec: 60
+    brute-threshold: 5
+    stuffing-window-sec: 300
+    stuffing-users: 10
+    rate-window-sec: 10
+    rate-max: 30
+    medium-from: 30
+    high-from: 60
+    weights: {R1: 40, R2: 30, R4: 20, R5: 20, R6: 30, R6D: 0, R7: 15, R8: 50}
+    scanners: [sqlmap, nikto, nmap, hydra, masscan]
+    injection: ["(?i)union\\s+select", "(?i)un\\s+ion\\s+select", "(?i)<script", "\\.\\./", "(?i);\\s*(cat|ls|wget|curl)\\s", "(?i)'\\s*or\\s+'?1'?='?1"]
+    sensitive-paths: [/.env, /admin, /phpmyadmin, /.git]
+    honeytokens: [admin:Passw0rd!, root:toor]
+spring:
+  datasource: {username: "${DB_USER}", password: "${DB_PASS}"}
+  sql.init.mode: always
+pqh:
+  integrity:
+    mode: ${PQH_INTEGRITY_MODE:FULL}
+    epoch-size: ${PQH_EPOCH_SIZE:50}
+    seal-interval-ms: ${PQH_SEAL_INTERVAL_MS:2000}
+    checkpoint-every-epochs: ${PQH_CHECKPOINT_EVERY:1}
+    checkpoint-private-key: ${PQH_CHECKPOINT_PRIVATE_KEY:}
+    checkpoint-public-key: ${PQH_CHECKPOINT_PUBLIC_KEY:}
+    checkpoint-private-key-file: ${PQH_CHECKPOINT_PRIVATE_KEY_FILE:}
+    checkpoint-public-key-file: ${PQH_CHECKPOINT_PUBLIC_KEY_FILE:}
+  kem:
+    mode: ${PQH_KEM_MODE:ML_KEM_768}
+  detection:
+    max-decode-rounds: ${PQH_MAX_DECODE_ROUNDS:3}
+  research:
+    trials: ${PQH_TRIALS:200}
+    seed: ${PQH_SEED:42}
+    output-dir: ${PQH_RESULTS_DIR:results}
+    exposure:
+      trials: ${PQH_EXPOSURE_TRIALS:2000}
+      bootstrap-resamples: ${PQH_BOOTSTRAP_RESAMPLES:2000}
+      epoch-sizes: [10, 50, 100, 500]
+      seal-intervals-ms: [500, 2000, 10000]
+      rates-per-second: [5, 50]
+    benchmark:
+      runs: 30
+      iterations-per-run: 200
+      warmup: 300
+      bootstrap-resamples: 5000
+      concurrent-clients: [1, 4, 16]
+      batch-sizes: [1, 10, 100]
+---
+spring: {config.activate.on-profile: honeypot, datasource.url: "${DB_URL:jdbc:mysql://localhost:3308/honeypot_db}", sql.init.schema-locations: "classpath:schema-honeypot.sql"}
+server.port: ${PORT:8080}
+---
+spring: {config.activate.on-profile: collector, datasource.url: "${DB_URL:jdbc:mysql://localhost:3307/collector_db}", sql.init.schema-locations: "classpath:schema-collector.sql"}
+server.port: ${PORT:9090}

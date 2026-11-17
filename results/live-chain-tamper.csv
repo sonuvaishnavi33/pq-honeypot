@@ -1,0 +1,3 @@
+﻿"scenario","integrity_mode","forward_response","collector_records","audit_result","verification","outcome"
+"mutated-pending-event","CHAIN","CHAIN_BROKEN (seq 1-1)","0","CHAIN_BROKEN","OK","REJECTED"
+"clean-event-after-reset","CHAIN","OK (seq 1-1)","1","OK","OK","ACCEPTED"

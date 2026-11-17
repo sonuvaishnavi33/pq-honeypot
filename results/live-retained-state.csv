@@ -1,0 +1,2 @@
+scope,source_records,collector_records,pending_events,unsealed_events,verify_status,latest_audit_at_utc,latest_audit_result,latest_audit_detail,evidence_type
+post-recovery retained dataset,374,374,0,0,OK,2026-11-16T22:49:40.000+00:00,OK,stored 374-374,read-only live endpoint snapshot

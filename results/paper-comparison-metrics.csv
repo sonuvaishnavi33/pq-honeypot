@@ -1,0 +1,21 @@
+metric,value,sample_size,source,interpretation
+latency_mean_ms,31.273,300,research-results.csv,Local sequential event-ingest measurement
+latency_median_ms,29.227,300,research-results.csv,Local sequential event-ingest measurement
+latency_p95_ms,51.775,300,research-results.csv,"Nearest-rank p95, local sequential run"
+latency_max_ms,372.663,300,research-results.csv,Observed max; not a capacity guarantee
+curated_tp,5,5,research-functional-results.csv,Post-fix curated corpus; not a production estimate
+curated_fp,0,5,research-functional-results.csv,Post-fix curated corpus; not a production estimate
+curated_fn,0,5,research-functional-results.csv,Post-fix curated corpus; not a production estimate
+curated_tn,5,5,research-functional-results.csv,Post-fix curated corpus; not a production estimate
+curated_precision,1.000000,10,research-functional-results.csv,Small hand-selected corpus
+curated_recall,1.000000,5,research-functional-results.csv,Small hand-selected corpus
+curated_f1,1.000000,10,research-functional-results.csv,Small hand-selected corpus
+curated_fpr,0.000000,5,research-functional-results.csv,Small hand-selected corpus
+curated_recall_wilson95_low,0.565518,5,research-functional-results.csv,Wilson interval; n=5
+curated_recall_wilson95_high,1.000000,5,research-functional-results.csv,Wilson interval; n=5
+curated_fpr_wilson95_low,0.000000,5,research-functional-results.csv,Wilson interval; n=5
+curated_fpr_wilson95_high,0.434482,5,research-functional-results.csv,Wilson interval; n=5
+tamper_test,CHAIN_BROKEN at sequence 321,1 altered event,research-functional-results.csv,Controlled local test only
+collector_records_final,322,1 run,research-functional-results.csv,After valid replacement and post-fix event
+related_work_accuracy,90-95% (reported),not adequately specified,reference [5],Not directly comparable; not independently reproduced
+related_work_latency,qualitative low latency,not adequately specified,reference [5],No numeric latency for comparison

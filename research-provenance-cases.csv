@@ -1,0 +1,11 @@
+index,group,stimulus,http,score,rules,decoded_only
+1,attack,probe=union%20select%20local_test,403,45,"R6,R6D,R7",true
+2,attack,probe=%3Cscript%3E,403,45,"R6,R6D,R7",true
+3,attack,probe=..%2Fetc%2Fpasswd,403,45,"R6,R6D,R7",true
+4,attack,probe=%3B%20cat%20%2Fetc%2Fpasswd,403,45,"R6,R6D,R7",true
+5,attack,probe=%27%20OR%20%271%27%3D%271,403,45,"R6,R6D,R7",true
+6,benign,city=summer%20weather,403,15,R7,false
+7,benign,q=select%20something,403,15,R7,false
+8,benign,redirect=%2Fhome%2Fprofile,403,15,R7,false
+9,benign,value=100%25,403,15,R7,false
+10,benign,message=one%20two,403,15,R7,false

@@ -1,0 +1,2 @@
+﻿"mode","kem_mode","trials","all_accepted","mean_ms","mean_ci95_low_ms","mean_ci95_high_ms","median_ms","p95_ms","min_ms","max_ms"
+"FULL","X25519","30","True","137.618","122.541","155.985","116.068","251.551","100.982","298.499"

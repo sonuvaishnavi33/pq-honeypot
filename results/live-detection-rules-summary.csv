@@ -1,0 +1,2 @@
+﻿"positive_cases","benign_cases","true_positive","false_negative","false_positive","true_negative","accuracy","precision","recall","specificity","all_evidence_accepted","collector_verification","forward_responses"
+"5","5","5","0","0","5","1","1","1","1","True","OK","OK (seq 1-5); OK (seq 6-10)"
